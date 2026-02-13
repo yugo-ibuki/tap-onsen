@@ -1,125 +1,96 @@
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 ## Project Overview
 
-tap-onsen is a fully-functional Tauri-based voice input application for macOS with AI processing capabilities. The app captures audio, transcribes it using OpenAI Whisper, and processes text through three modes: raw, corrected (AI), or summarized (AI).
+tap-onsen は macOS 向けの音声入力デスクトップアプリ。Tauri 2 (React + Rust) で構築。音声をWhisper APIでテキスト変換し、モードに応じてAI処理（校正・要約）を適用する。
 
-**Current Status:** Functional frontend and backend with mock data fallbacks. Ready for API integration.
+## Development Commands
 
-**Tech Stack:** React 19 + TypeScript + Vite frontend, Tauri 2 (Rust) backend, OpenAI Whisper API, macOS CoreAudio
+```bash
+# フロントエンド開発サーバー（Vite単体、ブラウザ確認用）
+pnpm dev
 
-## Project Structure
+# Tauriウィンドウ付き開発（フロントエンド+Rustバックエンド同時起動）
+pnpm tauri dev
 
-Frontend: src/ (React components, hooks, types, IPC wrappers)
-Backend: src-tauri/ (Rust commands, voice processing, AI integration, config)
-Config: config/modes.yaml (three modes: raw, correct, summarize)
+# ビルド
+pnpm build              # フロントエンドのみ (tsc + vite build)
+pnpm tauri build        # macOSバイナリ生成
 
-## Common Development Commands
+# Rust側
+cd src-tauri
+cargo check             # コンパイルチェック
+cargo test              # テスト実行（prompt, format, context にユニットテスト有り）
+cargo test prompt       # 特定テストモジュールのみ
+cargo clippy            # Lint
 
-pnpm dev        - Start dev server with Tauri window
-pnpm build      - Build frontend
-pnpm tauri build - Build macOS binary
+# TypeScript
+npx tsc --noEmit        # 型チェック
+```
 
-## Architecture Overview
+## Architecture
 
-Data Flow: User Audio → RecordButton → useVoiceInput hook → Tauri IPC → Rust backend (audio capture/Whisper API) → transcript → AI processing → ModeSelector determines if AI applied → output displayed in TextArea
+### データフロー
 
-## Key IPC Commands (in src/lib/ipc.ts)
+```
+User → RecordButton → start_recording (cpal) → stop_recording → PCM i16 bytes
+  → transcribe_audio → pcm_bytes_to_wav → Whisper API → TranscriptionResult
+  → useAIProcess.process() → process_with_ai → render_prompt + AIProvider → TextArea表示
+```
 
-- getModesCommand() - Load modes from config/modes.yaml
-- startRecording() - Begin audio capture
-- stopRecording() - End audio, return PCM buffer
-- transcribeAudio(audio) - Send to Whisper API
-- processWithAI(text, modeId) - Apply AI processing
+### フロントエンド ↔ Rust IPC
 
-## Frontend Hooks
+フロントエンドは `src/lib/ipc.ts` を唯一のTauriブリッジとして使う。直接 `invoke()` を呼ばない。IPC関数とRustコマンドは1:1対応:
 
-useVoiceInput - Manages recording state, transcription, with mock data fallback
-useAIProcess - Manages AI text processing, handles isProcessing state
-Both hooks used in App.tsx, state flows to components for rendering
+| ipc.ts | Rust コマンド (lib.rs登録) |
+|--------|--------------------------|
+| getModes() | commands::get_modes |
+| startRecording() | commands::audio::start_recording |
+| stopRecording() | commands::audio::stop_recording |
+| transcribeAudio() | commands::audio::transcribe_audio |
+| processWithAI() | commands::ai::process_with_ai |
 
-## Modes Configuration (config/modes.yaml)
+### 音声録音の仕組み (commands/audio.rs)
 
-raw: no AI processing, direct transcription
-correct: AI grammar/spelling correction via prompt template
-summarize: AI text summarization via prompt template
-Each mode has id, label (Japanese), description, ai_enabled flag, and ai_prompt template
+`AudioState` をTauri Stateとして管理。`start_recording` で cpal の入力ストリームを別スレッドで起動し、`mpsc` チャンネルで停止シグナルを送る設計。録音データは `Arc<Mutex<Vec<f32>>>` バッファに蓄積→停止時にi16 PCM LEバイト列に変換して返す。
 
-## Completed Implementation
+### AI処理のプロバイダー抽象化
 
-✅ Full React frontend with all UI components
-✅ Tauri project setup and Rust scaffolding
-✅ Mode configuration system (YAML)
-✅ Voice recording state management with mock fallback
-✅ Type definitions and IPC wrappers
-✅ useVoiceInput and useAIProcess hooks
+`ai::AIProvider` trait で OpenAI / Anthropic を統一的に扱う。`commands/ai.rs` の `process_with_ai` は環境変数 (`OPENAI_API_KEY` → `ANTHROPIC_API_KEY`) の存在順でプロバイダーを自動選択する。ストリーミング対応は `process_stream` + `tokio::sync::mpsc` で実装済み（現在コマンドからは非ストリーミング呼び出し）。
 
-## TODO - Backend Implementation
+### 音声認識エンジンの抽象化
 
-🚧 Whisper API client (src-tauri/src/voice/whisper_api.rs)
-🚧 AI provider clients: OpenAI & Anthropic (src-tauri/src/ai/)
-🚧 Audio capture implementation (CoreAudio integration)
-🚧 PCM to WAV format conversion
-🚧 Streaming response handling
-🚧 API error handling and retry logic
-🚧 Environment variable config for API keys
+`voice::SpeechRecognizer` trait でバックエンドを切替可能に設計。現在は `WhisperApiClient` のみ実装。whisper.cpp やmacOS native は将来追加予定。
+
+### モード設定の読み込み優先順位 (config/modes.rs)
+
+1. Tauriリソースディレクトリ（本番ビルド）
+2. `../config/modes.yaml`（開発時、CWD=src-tauri）
+3. `include_str!` によるコンパイル時埋め込み（フォールバック）
+
+### プロンプトテンプレート (ai/prompt.rs)
+
+`{input}` と `{context}` プレースホルダーを展開。`{input}` がテンプレートに無い場合は末尾に自動追加。
+
+### エラーハンドリング (error.rs)
+
+`AppError` enum（Config / Audio / Ai / FileSystem / Io）を共通エラー型として使用。Tauri v2 では `Serialize` が必要なため、`Display` の文字列としてシリアライズする。
 
 ## Environment Variables
 
-OPENAI_API_KEY - Whisper transcription and/or GPT processing
-ANTHROPIC_API_KEY - Claude API alternative for AI processing
-OPENAI_ORG_ID - Optional OpenAI organization ID
-AUDIO_SAMPLE_RATE - Default 16000
-AUDIO_CHANNELS - Default 1 (mono)
+- `OPENAI_API_KEY` — Whisper音声認識 + GPT-4o-mini テキスト処理（必須、どちらか一方）
+- `ANTHROPIC_API_KEY` — Claude Haiku テキスト処理（OpenAI未設定時のフォールバック）
 
-## Component Architecture
+## Key Conventions
 
-App.tsx: Root component with useVoiceInput and useAIProcess hooks
-  ↓ selectedMode state, voice/ai states
-  → ModeSelector: Radio buttons for mode selection
-  → TextArea: Display interim and final transcription + AI output
-  → RecordButton: Start/stop recording with timer
-  → ActionButtons: Copy/clear functionality
+- パッケージマネージャ: **pnpm**
+- フロントエンドの型定義: `src/types/` に domain ごとに分離（mode.ts, voice.ts, ai.ts）
+- Rust側の型はコマンド層(`commands/`)とドメイン層(`voice/`, `ai/`)で分離し、`From` trait で変換
+- tsconfig: `strict: true`, `noUnusedLocals: true`, `noUnusedParameters: true`
+- UI言語: 日本語（ラベル、説明文）
 
-## Type Definitions Location
+## Spec Reference
 
-Mode interface: src/types/mode.ts
-  - id, label, description, ai_enabled, ai_prompt?
-TranscriptionResult: src/types/voice.ts
-  - text, confidence?, duration?
-AIResponse: src/types/ai.ts
-  - text, model, tokens? (input/output), error?
-
-## Debugging
-
-Frontend: Right-click in Tauri window → Open DevTools → Console for IPC errors
-Rust: cargo check && cargo test in src-tauri/
-Mock Mode: useVoiceInput provides MOCK_TRANSCRIPTIONS when API calls fail
-Error Display: App.tsx shows voice.error or ai.error in app-error div
-
-## File Organization Reference
-
-Frontend components: src/components/*.tsx (one per component)
-Custom hooks: src/hooks/*.ts (useVoiceInput, useAIProcess)
-Type definitions: src/types/*.ts (separate files per domain)
-IPC layer: src/lib/ipc.ts (Tauri command wrappers)
-Backend commands: src-tauri/src/commands/*.rs
-Voice pipeline: src-tauri/src/voice/*.rs
-AI module: src-tauri/src/ai/*.rs
-Config loader: src-tauri/src/config/*.rs
-
-## Tauri Integration Points
-
-Handlers registered in src-tauri/src/lib.rs:
-  - commands::get_modes
-  - commands::audio::start_recording
-  - commands::audio::stop_recording
-  - commands::audio::transcribe_audio
-  - commands::ai::process_with_ai
-Frontend calls via src/lib/ipc.ts wrapper functions
-
-## Dependencies Key Packages
-
-Frontend: React 19, TypeScript 5.7, Vite 6, @tauri-apps/api
-Backend: tauri 2, serde/serde_json/serde_yaml, tokio, reqwest, hound, async-trait, futures
+詳細仕様書: `/Users/yugo/ghq/github.com/yugo-ibuki/private-service-document/voice-input-app/spec.md`
