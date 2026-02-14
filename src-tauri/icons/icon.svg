@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Rounded background -->
+  <rect x="0" y="0" width="512" height="512" rx="112" ry="112" fill="#7c3aed"/>
+
+  <!-- Microphone body -->
+  <rect x="212" y="100" width="88" height="168" rx="44" ry="44" fill="#ffffff"/>
+
+  <!-- Microphone arc -->
+  <path d="M168 252 Q168 348 256 348 Q344 348 344 252" fill="none" stroke="#ffffff" stroke-width="26" stroke-linecap="round"/>
+
+  <!-- Microphone stand -->
+  <line x1="256" y1="348" x2="256" y2="392" stroke="#ffffff" stroke-width="26" stroke-linecap="round"/>
+
+  <!-- Base line -->
+  <line x1="206" y1="392" x2="306" y2="392" stroke="#ffffff" stroke-width="26" stroke-linecap="round"/>
+
+  <!-- Steam/onsen waves -->
+  <path d="M175 455 Q200 410 225 455" fill="none" stroke="#e9d5ff" stroke-width="14" stroke-linecap="round"/>
+  <path d="M231 445 Q256 395 281 445" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+  <path d="M287 455 Q312 410 337 455" fill="none" stroke="#e9d5ff" stroke-width="14" stroke-linecap="round"/>
+</svg>
