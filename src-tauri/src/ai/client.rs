@@ -254,9 +254,138 @@ impl AIProvider for AnthropicClient {
     }
 }
 
-/// 環境変数からプロバイダーに応じたクライアントを生成する
+/// Vertex AI Gemini Flash クライアント
+///
+/// `gcloud auth print-access-token` で OAuth2 トークンを取得し、
+/// Vertex AI の generateContent エンドポイントを呼び出す。
+pub struct VertexAIClient {
+    client: Client,
+    project: String,
+    location: String,
+    model: String,
+}
+
+impl VertexAIClient {
+    pub fn new(project: String, location: String) -> Self {
+        Self {
+            client: Client::builder()
+                .timeout(Duration::from_secs(DEFAULT_TIMEOUT_SECS))
+                .build()
+                .unwrap(),
+            project,
+            location,
+            model: "gemini-2.0-flash".to_string(),
+        }
+    }
+
+    fn endpoint(&self) -> String {
+        format!(
+            "https://{}-aiplatform.googleapis.com/v1/projects/{}/locations/{}/publishers/google/models/{}:generateContent",
+            self.location, self.project, self.location, self.model
+        )
+    }
+
+    async fn get_access_token() -> Result<String, AIError> {
+        let output = tokio::process::Command::new("gcloud")
+            .args(["auth", "print-access-token"])
+            .output()
+            .await
+            .map_err(|e| AIError::RequestFailed(format!("Failed to run gcloud: {}", e)))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(AIError::ApiKeyMissing(format!(
+                "gcloud auth failed: {}",
+                stderr.trim()
+            )));
+        }
+
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    }
+}
+
+#[async_trait]
+impl AIProvider for VertexAIClient {
+    async fn process(&self, prompt: &str) -> Result<AIResponse, AIError> {
+        let token = Self::get_access_token().await?;
+
+        let body = serde_json::json!({
+            "contents": [
+                { "role": "user", "parts": [{ "text": prompt }] }
+            ]
+        });
+
+        let response = self
+            .client
+            .post(&self.endpoint())
+            .header("Authorization", format!("Bearer {}", token))
+            .header("Content-Type", "application/json")
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| {
+                if e.is_timeout() {
+                    AIError::Timeout
+                } else {
+                    AIError::RequestFailed(e.to_string())
+                }
+            })?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let text = response.text().await.unwrap_or_default();
+            return Err(AIError::RequestFailed(format!("HTTP {}: {}", status, text)));
+        }
+
+        let json: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| AIError::ParseError(e.to_string()))?;
+
+        let text = json["candidates"][0]["content"]["parts"][0]["text"]
+            .as_str()
+            .unwrap_or("")
+            .to_string();
+
+        let usage = json.get("usageMetadata").map(|u| TokenUsage {
+            prompt_tokens: u["promptTokenCount"].as_u64().unwrap_or(0) as u32,
+            completion_tokens: u["candidatesTokenCount"].as_u64().unwrap_or(0) as u32,
+            total_tokens: u["totalTokenCount"].as_u64().unwrap_or(0) as u32,
+        });
+
+        Ok(AIResponse {
+            text,
+            model: self.model.clone(),
+            usage,
+        })
+    }
+
+    async fn process_stream(
+        &self,
+        prompt: &str,
+        sender: mpsc::Sender<StreamChunk>,
+    ) -> Result<(), AIError> {
+        let response = self.process(prompt).await?;
+        let _ = sender
+            .send(StreamChunk {
+                content: response.text,
+                done: true,
+            })
+            .await;
+        Ok(())
+    }
+}
+
+/// プロバイダーに応じたクライアントを生成する
 pub fn create_provider(provider_type: &ProviderType) -> Result<Box<dyn AIProvider>, AIError> {
     match provider_type {
+        ProviderType::VertexAI => {
+            let project = std::env::var("GOOGLE_CLOUD_PROJECT")
+                .map_err(|_| AIError::ApiKeyMissing("GOOGLE_CLOUD_PROJECT".to_string()))?;
+            let location =
+                std::env::var("GOOGLE_CLOUD_LOCATION").unwrap_or_else(|_| "us-central1".into());
+            Ok(Box::new(VertexAIClient::new(project, location)))
+        }
         ProviderType::OpenAI => {
             let api_key = std::env::var("OPENAI_API_KEY")
                 .map_err(|_| AIError::ApiKeyMissing("OPENAI_API_KEY".to_string()))?;

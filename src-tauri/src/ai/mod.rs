@@ -72,12 +72,13 @@ pub trait AIProvider: Send + Sync {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum ProviderType {
+    VertexAI,
     OpenAI,
     Anthropic,
 }
 
 impl Default for ProviderType {
     fn default() -> Self {
-        ProviderType::OpenAI
+        ProviderType::VertexAI
     }
 }
