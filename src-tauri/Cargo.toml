@@ -25,6 +25,7 @@ hound = "3.5"
 cpal = "0.15"
 thiserror = "2"
 dotenvy = "0.15"
+arboard = "3"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"

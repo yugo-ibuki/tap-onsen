@@ -41,3 +41,7 @@ export async function checkAccessibilityPermission(
 ): Promise<boolean> {
   return invoke<boolean>("check_accessibility_permission", { prompt });
 }
+
+export async function pasteToForeground(text: string): Promise<void> {
+  return invoke<void>("paste_to_foreground", { text });
+}
