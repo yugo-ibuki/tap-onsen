@@ -11,11 +11,13 @@ export async function transcribeAudio(
   audioData: number[],
   sampleRate: number,
   channels: number,
+  engine: "native" | "whisper" = "native",
 ): Promise<TranscriptionResult> {
   return invoke<TranscriptionResult>("transcribe_audio", {
     audioData,
     sampleRate,
     channels,
+    engine,
   });
 }
 

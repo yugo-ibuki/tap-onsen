@@ -1,4 +1,6 @@
 pub mod format;
+#[cfg(target_os = "macos")]
+pub mod macos_speech;
 pub mod pipeline;
 pub mod whisper_api;
 
@@ -26,6 +28,10 @@ pub enum VoiceError {
     MissingApiKey,
     /// パイプラインエラー
     PipelineError(String),
+    /// macOS Speech Framework エラー
+    NativeError(String),
+    /// 音声認識の権限が未承認
+    PermissionDenied,
 }
 
 impl fmt::Display for VoiceError {
@@ -35,6 +41,8 @@ impl fmt::Display for VoiceError {
             VoiceError::ApiError(msg) => write!(f, "API error: {}", msg),
             VoiceError::MissingApiKey => write!(f, "OPENAI_API_KEY environment variable is not set"),
             VoiceError::PipelineError(msg) => write!(f, "Pipeline error: {}", msg),
+            VoiceError::NativeError(msg) => write!(f, "Native speech error: {}", msg),
+            VoiceError::PermissionDenied => write!(f, "Speech recognition permission denied"),
         }
     }
 }

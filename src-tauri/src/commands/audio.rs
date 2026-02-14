@@ -68,22 +68,44 @@ impl AudioState {
 /// 音声データを文字起こしする
 ///
 /// フロントエンドから PCM i16 LE のバイト列とサンプルレート・チャンネル数を受け取り、
-/// WAV に変換後 Whisper API で日本語の文字起こしを行って結果を返す。
+/// WAV に変換後、指定エンジンで文字起こしを行って結果を返す。
+///
+/// # Arguments
+/// * `engine` - 認識エンジン: "native"（macOS Speech Framework）/ "whisper"（OpenAI API）
+///              省略時は "native"
 #[tauri::command]
 pub async fn transcribe_audio(
     audio_data: Vec<u8>,
     sample_rate: u32,
     channels: u16,
+    engine: Option<String>,
 ) -> Result<TranscriptionResult, AppError> {
-    let client =
-        WhisperApiClient::from_env().map_err(|e| AppError::Audio(e.to_string()))?;
     let wav_data = pcm_bytes_to_wav(&audio_data, sample_rate, channels)
         .map_err(|e| AppError::Audio(e.to_string()))?;
-    let result = client
-        .transcribe(&wav_data, "ja")
-        .await
-        .map_err(|e| AppError::Audio(e.to_string()))?;
-    Ok(result.into())
+
+    match engine.as_deref().unwrap_or("native") {
+        #[cfg(target_os = "macos")]
+        "native" => {
+            use crate::voice::macos_speech::MacOSSpeechRecognizer;
+            let recognizer = MacOSSpeechRecognizer::new("ja-JP")
+                .map_err(|e| AppError::Audio(e.to_string()))?;
+            let result = recognizer
+                .transcribe(&wav_data, "ja-JP")
+                .await
+                .map_err(|e| AppError::Audio(e.to_string()))?;
+            Ok(result.into())
+        }
+        "whisper" => {
+            let client = WhisperApiClient::from_env()
+                .map_err(|e| AppError::Audio(e.to_string()))?;
+            let result = client
+                .transcribe(&wav_data, "ja")
+                .await
+                .map_err(|e| AppError::Audio(e.to_string()))?;
+            Ok(result.into())
+        }
+        other => Err(AppError::Audio(format!("Unknown engine: {}", other))),
+    }
 }
 
 /// マイクからの録音を開始する
