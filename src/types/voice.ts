@@ -11,10 +11,3 @@ export interface RecordingResult {
   channels: number;
   duration_ms: number;
 }
-
-export interface AudioState {
-  isRecording: boolean;
-  duration: number;
-  sampleRate: number;
-  channelCount: number;
-}

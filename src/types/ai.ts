@@ -9,8 +9,3 @@ export interface TokenUsage {
   completion_tokens: number;
   total_tokens: number;
 }
-
-export interface StreamChunk {
-  content: string;
-  done: boolean;
-}

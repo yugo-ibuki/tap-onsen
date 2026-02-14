@@ -7,7 +7,6 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "build:app": "tauri build 2>/dev/null; mkdir -p dist/macos && cp -R 'src-tauri/target/release/bundle/macos/Voice Input App.app' dist/macos/",
-    "preview": "vite preview",
     "tauri": "tauri"
   },
   "dependencies": {
