@@ -5,6 +5,7 @@ import { RecordButton } from "./components/RecordButton";
 import { ActionButtons } from "./components/ActionButtons";
 import { useVoiceInput } from "./hooks/useVoiceInput";
 import { useAIProcess } from "./hooks/useAIProcess";
+import { usePushToTalk } from "./hooks/usePushToTalk";
 import type { Mode } from "./types/mode";
 import { useState } from "react";
 import "./App.css";
@@ -13,6 +14,12 @@ function App() {
   const [selectedMode, setSelectedMode] = useState<Mode | null>(null);
   const voice = useVoiceInput();
   const ai = useAIProcess();
+  const ptt = usePushToTalk({
+    isRecording: voice.isRecording,
+    isProcessing: ai.isProcessing,
+    onStart: voice.start,
+    onStop: voice.stop,
+  });
 
   // 音声認識結果が更新されたらAI処理を実行
   useEffect(() => {
@@ -55,6 +62,18 @@ function App() {
           onStop={voice.stop}
           disabled={ai.isProcessing}
         />
+
+        {ptt.isAccessibilityGranted === false ? (
+          <button
+            type="button"
+            className="ptt-hint ptt-hint--warning"
+            onClick={ptt.requestAccessibility}
+          >
+            右 ⌥ Option 長押しで録音するにはアクセシビリティ権限が必要です
+          </button>
+        ) : (
+          <p className="ptt-hint">右 ⌥ Option 長押しでも録音できます</p>
+        )}
 
         <ActionButtons
           text={displayText}

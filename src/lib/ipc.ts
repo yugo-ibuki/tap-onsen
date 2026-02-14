@@ -35,3 +35,9 @@ export async function startRecording(): Promise<void> {
 export async function stopRecording(): Promise<RecordingResult> {
   return invoke<RecordingResult>("stop_recording");
 }
+
+export async function checkAccessibilityPermission(
+  prompt: boolean,
+): Promise<boolean> {
+  return invoke<boolean>("check_accessibility_permission", { prompt });
+}

@@ -3859,6 +3859,8 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "block2",
+ "core-foundation 0.10.1",
+ "core-graphics",
  "cpal",
  "dotenvy",
  "futures",

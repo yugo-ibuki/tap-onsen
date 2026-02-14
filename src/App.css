@@ -412,6 +412,33 @@ body {
   color: var(--success);
 }
 
+/* ===== Push-to-Talk Hint ===== */
+.ptt-hint {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-secondary);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.ptt-hint--warning {
+  display: block;
+  width: 100%;
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-family: var(--font);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ptt-hint--warning:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* ===== Error ===== */
 .app-error {
   background: color-mix(in srgb, var(--danger) 10%, transparent);
