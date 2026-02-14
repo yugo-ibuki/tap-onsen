@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { Mode } from "../types/mode";
 import type { TranscriptionResult, RecordingResult } from "../types/voice";
 import type { AIResponse } from "../types/ai";
+import type { Entry, NewEntry } from "../types/db";
 
 export async function getModes(): Promise<Mode[]> {
   return invoke<Mode[]>("get_modes");
@@ -40,4 +41,23 @@ export async function checkAccessibilityPermission(
   prompt: boolean,
 ): Promise<boolean> {
   return invoke<boolean>("check_accessibility_permission", { prompt });
+}
+
+export async function saveEntry(entry: NewEntry): Promise<number> {
+  return invoke<number>("save_entry", { entry });
+}
+
+export async function getEntries(
+  limit: number,
+  offset: number,
+): Promise<Entry[]> {
+  return invoke<Entry[]>("get_entries", { limit, offset });
+}
+
+export async function getEntry(id: number): Promise<Entry | null> {
+  return invoke<Entry | null>("get_entry", { id });
+}
+
+export async function deleteEntry(id: number): Promise<boolean> {
+  return invoke<boolean>("delete_entry", { id });
 }

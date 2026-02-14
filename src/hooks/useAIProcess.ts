@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { processWithAI } from "../lib/ipc";
+import { processWithAI, saveEntry } from "../lib/ipc";
 import type { Mode } from "../types/mode";
 
 interface UseAIProcessReturn {
@@ -20,6 +20,16 @@ export function useAIProcess(): UseAIProcessReturn {
 
     if (!mode.ai_enabled) {
       setProcessedText(text);
+      // AI無効モードでも履歴に保存（fire-and-forget）
+      saveEntry({
+        raw_text: text,
+        processed_text: text,
+        mode_id: mode.id,
+        model: "none",
+        prompt_tokens: null,
+        completion_tokens: null,
+        total_tokens: null,
+      }).catch((e) => console.warn("Failed to save entry:", e));
       return;
     }
 
@@ -29,6 +39,16 @@ export function useAIProcess(): UseAIProcessReturn {
     try {
       const result = await processWithAI(text, mode.id);
       setProcessedText(result.text);
+      // AI処理結果を履歴に保存（fire-and-forget）
+      saveEntry({
+        raw_text: text,
+        processed_text: result.text,
+        mode_id: mode.id,
+        model: result.model,
+        prompt_tokens: result.usage?.prompt_tokens ?? null,
+        completion_tokens: result.usage?.completion_tokens ?? null,
+        total_tokens: result.usage?.total_tokens ?? null,
+      }).catch((e) => console.warn("Failed to save entry:", e));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

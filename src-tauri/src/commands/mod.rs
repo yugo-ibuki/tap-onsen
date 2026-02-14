@@ -1,5 +1,6 @@
 pub mod ai;
 pub mod audio;
+pub mod db;
 pub mod fs;
 
 use crate::config::modes;
