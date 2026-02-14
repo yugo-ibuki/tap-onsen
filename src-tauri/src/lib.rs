@@ -8,6 +8,8 @@ use commands::audio::AudioState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // .env ファイルから環境変数を読み込む（なくてもエラーにしない）
+    let _ = dotenvy::dotenv();
     tauri::Builder::default()
         .manage(AudioState::new())
         .invoke_handler(tauri::generate_handler![
