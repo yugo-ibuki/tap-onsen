@@ -4,18 +4,19 @@ macOS 向け音声入力デスクトップアプリ。ボタンを押して話�
 
 ## 機能
 
-- **音声入力** — マイクで録音 → Whisper API でリアルタイム文字起こし
+- **音声入力** — マイクで録音 → macOS ネイティブ音声認識でテキスト化（オフライン対応）
 - **3つのモード** — そのまま入力 / 校正入力（AI） / 要約入力（AI）
 - **AI処理** — OpenAI GPT-4o-mini または Claude Haiku で自動テキスト加工
 - **クリップボードコピー** — 変換結果をワンクリックでコピー
 
 ## 必要なもの
 
+- macOS 10.15 (Catalina) 以上
 - [Node.js](https://nodejs.org/) v18+
 - [pnpm](https://pnpm.io/)
 - [Rust](https://rustup.rs/)
 - Tauri 2 の[システム依存](https://v2.tauri.app/start/prerequisites/)（macOS: Xcode Command Line Tools）
-- OpenAI API キー（音声認識 + AI処理）
+- OpenAI API キー（AI処理に必要。音声認識はネイティブエンジンのため不要）
 
 ## セットアップ
 

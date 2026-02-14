@@ -59,17 +59,22 @@ pub async fn process_with_ai(text: String, mode_id: String) -> Result<AIResponse
     // プロンプトを組み立て（コンテキストは今回なし — 将来的にステート管理で対応）
     let prompt = render_prompt(mode, &text, None);
 
-    // プロバイダーを作成（Vertex AI → OpenAI → Anthropic の優先順でフォールバック）
-    let provider_type = if std::env::var("GOOGLE_CLOUD_PROJECT").is_ok() {
-        ProviderType::VertexAI
-    } else if std::env::var("OPENAI_API_KEY").is_ok() {
-        ProviderType::OpenAI
-    } else if std::env::var("ANTHROPIC_API_KEY").is_ok() {
-        ProviderType::Anthropic
-    } else {
-        return Err(AppError::Ai(
-            "No AI provider configured. Set GOOGLE_CLOUD_PROJECT, OPENAI_API_KEY, or ANTHROPIC_API_KEY.".to_string(),
-        ));
+    // AI_PROVIDER 環境変数でプロバイダーを選択（vertexai / openai / anthropic）
+    let provider_type = match std::env::var("AI_PROVIDER").as_deref() {
+        Ok("vertexai") => ProviderType::VertexAI,
+        Ok("openai") => ProviderType::OpenAI,
+        Ok("anthropic") => ProviderType::Anthropic,
+        Ok(other) => {
+            return Err(AppError::Ai(format!(
+                "Unknown AI_PROVIDER: '{}'. Use vertexai, openai, or anthropic.",
+                other
+            )));
+        }
+        Err(_) => {
+            return Err(AppError::Ai(
+                "AI_PROVIDER not set. Set to vertexai, openai, or anthropic.".to_string(),
+            ));
+        }
     };
 
     let provider =
