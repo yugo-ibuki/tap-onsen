@@ -30,6 +30,7 @@ pub fn run() {
             commands::fs::delete_audio_file,
             commands::fs::cleanup_audio_files,
             commands::check_accessibility_permission,
+            commands::paste::paste_to_foreground,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
