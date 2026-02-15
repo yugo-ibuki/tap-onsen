@@ -1,18 +1,19 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ModeSelector } from "./components/ModeSelector";
 import { TextArea } from "./components/TextArea";
 import { RecordButton } from "./components/RecordButton";
 import { ActionButtons } from "./components/ActionButtons";
+import { History } from "./components/History";
 import { useVoiceInput } from "./hooks/useVoiceInput";
 import { useAIProcess } from "./hooks/useAIProcess";
 import { usePushToTalk } from "./hooks/usePushToTalk";
 import { pasteToForeground } from "./lib/ipc";
 import type { Mode } from "./types/mode";
-import { useState } from "react";
 import "./App.css";
 
 function App() {
   const [selectedMode, setSelectedMode] = useState<Mode | null>(null);
+  const [historyKey, setHistoryKey] = useState(0);
   const voice = useVoiceInput();
   const ai = useAIProcess();
   const pttTriggeredRef = useRef(false);
@@ -37,6 +38,7 @@ function App() {
       pttTriggeredRef.current = false;
 
       ai.process(voice.transcript, selectedMode).then((resultText) => {
+        setHistoryKey((k) => k + 1);
         if (wasPttTriggered && resultText) {
           pasteToForeground(resultText).catch((e) => {
             console.error("Failed to paste to foreground:", e);
@@ -98,6 +100,8 @@ function App() {
           onClear={handleClear}
           disabled={voice.isRecording || ai.isProcessing}
         />
+
+        <History refreshKey={historyKey} />
       </main>
 
       {(voice.error || ai.error) && (

@@ -439,6 +439,110 @@ body {
   color: var(--accent);
 }
 
+/* ===== History ===== */
+.history {
+  margin-top: 4px;
+}
+
+.history-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.history-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  transition: border-color 0.15s ease;
+}
+
+.history-item:hover {
+  border-color: var(--accent);
+}
+
+.history-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.history-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.history-mode {
+  background: var(--bg-tertiary);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.history-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.history-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  font-family: var(--font);
+}
+
+.history-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.history-btn-copy.copied {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.history-btn-delete:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 /* ===== Error ===== */
 .app-error {
   background: color-mix(in srgb, var(--danger) 10%, transparent);
