@@ -61,3 +61,7 @@ export async function getEntry(id: number): Promise<Entry | null> {
 export async function deleteEntry(id: number): Promise<boolean> {
   return invoke<boolean>("delete_entry", { id });
 }
+
+export async function pasteToForeground(text: string): Promise<void> {
+  return invoke<void>("paste_to_foreground", { text });
+}

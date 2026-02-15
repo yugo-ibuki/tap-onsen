@@ -6,7 +6,7 @@ interface UseAIProcessReturn {
   processedText: string;
   isProcessing: boolean;
   error: string | null;
-  process: (text: string, mode: Mode) => Promise<void>;
+  process: (text: string, mode: Mode) => Promise<string>;
   clear: () => void;
 }
 
@@ -15,8 +15,8 @@ export function useAIProcess(): UseAIProcessReturn {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const process = useCallback(async (text: string, mode: Mode) => {
-    if (!text.trim()) return;
+  const process = useCallback(async (text: string, mode: Mode): Promise<string> => {
+    if (!text.trim()) return "";
 
     if (!mode.ai_enabled) {
       setProcessedText(text);
@@ -30,7 +30,7 @@ export function useAIProcess(): UseAIProcessReturn {
         completion_tokens: null,
         total_tokens: null,
       }).catch((e) => console.warn("Failed to save entry:", e));
-      return;
+      return text;
     }
 
     setIsProcessing(true);
@@ -49,8 +49,10 @@ export function useAIProcess(): UseAIProcessReturn {
         completion_tokens: result.usage?.completion_tokens ?? null,
         total_tokens: result.usage?.total_tokens ?? null,
       }).catch((e) => console.warn("Failed to save entry:", e));
+      return result.text;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      return "";
     } finally {
       setIsProcessing(false);
     }

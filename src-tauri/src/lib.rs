@@ -48,6 +48,7 @@ pub fn run() {
             commands::db::get_entries,
             commands::db::get_entry,
             commands::db::delete_entry,
+            commands::paste::paste_to_foreground,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

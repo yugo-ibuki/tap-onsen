@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { ModeSelector } from "./components/ModeSelector";
 import { TextArea } from "./components/TextArea";
 import { RecordButton } from "./components/RecordButton";
@@ -6,6 +6,7 @@ import { ActionButtons } from "./components/ActionButtons";
 import { useVoiceInput } from "./hooks/useVoiceInput";
 import { useAIProcess } from "./hooks/useAIProcess";
 import { usePushToTalk } from "./hooks/usePushToTalk";
+import { pasteToForeground } from "./lib/ipc";
 import type { Mode } from "./types/mode";
 import { useState } from "react";
 import "./App.css";
@@ -14,17 +15,34 @@ function App() {
   const [selectedMode, setSelectedMode] = useState<Mode | null>(null);
   const voice = useVoiceInput();
   const ai = useAIProcess();
+  const pttTriggeredRef = useRef(false);
+
+  const handlePttStop = useCallback(async () => {
+    pttTriggeredRef.current = true;
+    await voice.stop();
+  }, [voice]);
+
   const ptt = usePushToTalk({
     isRecording: voice.isRecording,
     isProcessing: ai.isProcessing,
     onStart: voice.start,
-    onStop: voice.stop,
+    onStop: handlePttStop,
   });
 
   // 音声認識結果が更新されたらAI処理を実行
+  // PTTトリガー時は処理結果を前面アプリにペースト
   useEffect(() => {
     if (voice.transcript && selectedMode) {
-      ai.process(voice.transcript, selectedMode);
+      const wasPttTriggered = pttTriggeredRef.current;
+      pttTriggeredRef.current = false;
+
+      ai.process(voice.transcript, selectedMode).then((resultText) => {
+        if (wasPttTriggered && resultText) {
+          pasteToForeground(resultText).catch((e) => {
+            console.error("Failed to paste to foreground:", e);
+          });
+        }
+      });
     }
   }, [voice.transcript, selectedMode]);
 

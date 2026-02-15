@@ -2,6 +2,7 @@ pub mod ai;
 pub mod audio;
 pub mod db;
 pub mod fs;
+pub mod paste;
 
 use crate::config::modes;
 use crate::error::AppError;
