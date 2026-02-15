@@ -105,6 +105,15 @@ pub fn delete_entry(conn: &Connection, id: i64) -> Result<bool, AppError> {
     Ok(affected > 0)
 }
 
+/// 指定日数より古いエントリを削除し、削除件数を返す
+pub fn delete_old_entries(conn: &Connection, days: u32) -> Result<usize, AppError> {
+    let affected = conn.execute(
+        "DELETE FROM entries WHERE created_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', ?1)",
+        params![format!("-{} days", days)],
+    )?;
+    Ok(affected)
+}
+
 /// rusqlite の optional() を使うためのトレイト
 trait OptionalExt<T> {
     fn optional(self) -> Result<Option<T>, rusqlite::Error>;
@@ -227,6 +236,39 @@ mod tests {
         let conn = setup_db();
         let entry = get_entry(&conn, 99999).unwrap();
         assert!(entry.is_none());
+    }
+
+    #[test]
+    fn test_delete_old_entries() {
+        let conn = setup_db();
+
+        // 古いエントリを手動で挿入（4日前）
+        conn.execute(
+            "INSERT INTO entries (raw_text, processed_text, mode_id, model, created_at)
+             VALUES ('old', 'old', 'plain', 'none', strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-4 days'))",
+            [],
+        )
+        .unwrap();
+
+        // 新しいエントリを挿入（今）
+        insert_entry(&conn, &sample_entry()).unwrap();
+
+        let deleted = delete_old_entries(&conn, 3).unwrap();
+        assert_eq!(deleted, 1);
+
+        // 新しいエントリは残っている
+        let entries = get_entries(&conn, 100, 0).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].raw_text, "こんにちは世界");
+    }
+
+    #[test]
+    fn test_delete_old_entries_none_old() {
+        let conn = setup_db();
+        insert_entry(&conn, &sample_entry()).unwrap();
+
+        let deleted = delete_old_entries(&conn, 3).unwrap();
+        assert_eq!(deleted, 0);
     }
 
     #[test]

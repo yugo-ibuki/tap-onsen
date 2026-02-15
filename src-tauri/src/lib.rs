@@ -29,6 +29,26 @@ pub fn run() {
                 DbState::new(&db_path).expect("failed to initialize database");
             app.manage(db_state);
 
+            // 5分ごとに3日以上前のエントリを削除するバックグラウンドタスク
+            let handle = app.handle().clone();
+            tokio::spawn(async move {
+                let interval = tokio::time::Duration::from_secs(12 * 60 * 60);
+                loop {
+                    tokio::time::sleep(interval).await;
+                    let result = {
+                        let db = handle.state::<DbState>();
+                        let conn = db.conn.lock();
+                        conn.ok()
+                            .and_then(|c| db::repository::delete_old_entries(&c, 3).ok())
+                    };
+                    if let Some(n) = result {
+                        if n > 0 {
+                            eprintln!("[cleanup] deleted {} old entries", n);
+                        }
+                    }
+                }
+            });
+
             // macOS: Push-to-Talk（右Optionキー長押し）リスナーを起動
             #[cfg(target_os = "macos")]
             hotkey::start_listener(app.handle().clone());
