@@ -19,8 +19,17 @@ pub enum AppError {
     #[error("File system error: {0}")]
     FileSystem(String),
 
+    #[error("Database error: {0}")]
+    Database(String),
+
     #[error("{0}")]
     Io(#[from] std::io::Error),
+}
+
+impl From<rusqlite::Error> for AppError {
+    fn from(e: rusqlite::Error) -> Self {
+        AppError::Database(e.to_string())
+    }
 }
 
 /// Tauri v2 のフロントエンドへのエラー伝搬用
