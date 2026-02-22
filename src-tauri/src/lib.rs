@@ -29,9 +29,11 @@ pub fn run() {
                 DbState::new(&db_path).expect("failed to initialize database");
             app.manage(db_state);
 
-            // 5分ごとに3日以上前のエントリを削除するバックグラウンドタスク
+            // 12時間ごとに3日以上前のエントリを削除するバックグラウンドタスク
+            // setup は同期コンテキストなので tokio::spawn ではなく
+            // tauri::async_runtime::spawn を使う必要がある
             let handle = app.handle().clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 let interval = tokio::time::Duration::from_secs(12 * 60 * 60);
                 loop {
                     tokio::time::sleep(interval).await;
